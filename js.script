@@ -1,0 +1,399 @@
+// ===== Jádro aplikace 2.0 =====
+const App = (() => {
+  const SKEY = 'altiven_app2_user';
+  const THEME = 'altiven_theme';
+  const STORE = 'altiven_store_v2'; // vše v jednom JSON objektu
+  const TRIAL = 'altiven_trial_started';
+
+  // Bezpečné čtení JSON
+  const read = (k, fallback=null) => {
+    try { const raw = localStorage.getItem(k); return raw? JSON.parse(raw) : fallback; }
+    catch(e){ return fallback; }
+  };
+  const write = (k, v) => localStorage.setItem(k, JSON.stringify(v));
+
+  // Úložiště
+  let state = read(STORE, { users:{}, data:{}, settings:{}, meta:{} });
+
+  // Uživatelské ID (jednoduché, bez přihlášení)
+  if(!state.meta.uid){
+    state.meta.uid = 'local-'+Date.now();
+    write(STORE, state);
+  }
+
+  // Trial: 7 dní od prvního spuštění
+  (function ensureTrial(){
+    let started = localStorage.getItem(TRIAL);
+    if(!started){
+      localStorage.setItem(TRIAL, String(Date.now()));
+    }
+  })();
+
+  function isTrialActive(){
+    const started = Number(localStorage.getItem(TRIAL)||0);
+    if(!started) return true;
+    // 7 dní v ms
+    const limit = 7*24*60*60*1000;
+    return (Date.now() - started) < limit;
+  }
+
+  function toast(msg){
+    const el = document.createElement('div');
+    el.className = 'toast app-only';
+    el.textContent = msg;
+    document.body.appendChild(el);
+    setTimeout(()=>{ el.remove(); }, 2400);
+  }
+
+  function toggleTheme(){
+    document.body.classList.toggle('dark');
+    localStorage.setItem(THEME, document.body.classList.contains('dark')? 'dark':'light');
+  }
+  function loadTheme(){
+    const t = localStorage.getItem(THEME);
+    if(t==='dark') document.body.classList.add('dark');
+  }
+
+  // ---- Datové API ----
+  // namespace: data[type][key] = value (např. data['cenik']['obkladac']={...})
+  function saveBlock(type, key, value){
+    state = read(STORE, state);
+    state.data[type] = state.data[type] || {};
+    state.data[type][key] = value;
+    write(STORE, state);
+    toast('Uloženo');
+  }
+  function loadBlock(type, key, fallback={}){
+    state = read(STORE, state);
+    return (state.data[type] && state.data[type][key]) ? state.data[type][key] : fallback;
+  }
+  function loadAll(type, fallback={}){
+    state = read(STORE, state);
+    return state.data[type] || fallback;
+  }
+
+  // ---- Exporty ----
+  // Vrátí klonovaný uzel bez .app-only prvků
+  function cloneClean(node){
+    const clone = node.cloneNode(true);
+    const rm = clone.querySelectorAll('.app-only');
+    rm.forEach(el=> el.remove());
+    return clone;
+  }
+
+  // PDF z cílového elementu
+  async function exportPDF(selector, fileName='export.pdf'){
+    const node = document.querySelector(selector) || document.body;
+    const clean = cloneClean(node);
+    const wrap = document.createElement('div');
+    wrap.appendChild(clean);
+    document.body.appendChild(wrap);
+    wrap.style.position='fixed'; wrap.style.left='-10000px'; // mimo obrazovku
+    const opt = { margin: 0.5, filename: fileName, image:{ type:'jpeg', quality:0.98 }, html2canvas:{ scale:2 }, jsPDF:{ unit:'in', format:'a4', orientation:'portrait' } };
+    await html2pdf().from(wrap).set(opt).save();
+    wrap.remove();
+  }
+
+  // Tisk
+  function print(selector){
+    const node = document.querySelector(selector)||document.body;
+    const clean = cloneClean(node);
+    const html = document.documentElement.innerHTML;
+    document.body.innerHTML = '';
+    document.body.appendChild(clean);
+    window.print();
+    // zpět
+    document.location.reload();
+  }
+
+  // E-mail – otevřeme mailto s čistým HTML v těle (URL encoded)
+  function emailHTML(selector, subject='Dokument', to=''){
+    const node = document.querySelector(selector) || document.body;
+    const clean = cloneClean(node);
+    // Získáme čisté HTML
+    const container = document.createElement('div');
+    container.appendChild(clean);
+    const html = container.innerHTML;
+    const mailto = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(html)}`;
+    window.location.href = mailto;
+  }
+
+  function logout(){
+    // Lokální "odhlášení" – vyčistit jen identitu, data ponechat
+    localStorage.removeItem(SKEY);
+    toast('Byl jste odhlášen.');
+    setTimeout(()=>{ window.location.href = 'index.html'; }, 600);
+  }
+
+  // Pomocná utilita pro kalkulace
+  const Currency = {
+    czk(n){ return (Number(n)||0).toLocaleString('cs-CZ', { style:'currency', currency:'CZK' }); },
+    num(v){ return Number(String(v).replace(',', '.')) || 0; }
+  };
+
+  // Profesní registry – 24 profesí (klíče)
+  const PROFESSIONS = [
+    'zidkar', 'obkladac', 'podlahar', 'malir', 'zednik', 'elektrikar', 'instalater', 'tesar',
+    'sadra', 'stolar', 'pokryvac', 'klempir', 'topenar', 'svarac', 'sklenar', 'zamer',
+    'izolater', 'fasadar', 'stav_dozor', 'projektant', 'revize', 'deratizace', 'zahradnik', 'uklid'
+  ];
+
+  // Ceníkové položky – vzorové sady (obsáhlejší u obkladače + generický vzor)
+  const PRICEBOOK = {
+    obkladac: [
+      {name:'Příprava podkladu (penetrace)', unit:'m²', price:80},
+      {name:'Vyrovnání podkladu (stěrka do 5 mm)', unit:'m²', price:150},
+      {name:'Montáž obkladů – standard 20×20 až 30×60', unit:'m²', price:450},
+      {name:'Montáž obkladů – velkoformát nad 60×60', unit:'m²', price:650},
+      {name:'Montáž mozaiky', unit:'m²', price:650},
+      {name:'Řezání a otvor v obkladu', unit:'ks', price:60},
+      {name:'Montáž lišt / rohů', unit:'bm', price:80},
+      {name:'Spárování cementové spárovačkou', unit:'m²', price:120},
+      {name:'Spárování epoxidovou spárovačkou', unit:'m²', price:220},
+      {name:'Hydroizolace (2 nátěry)', unit:'m²', price:160},
+      {name:'Demontáž stávajícího obkladu', unit:'m²', price:180},
+      {name:'Úklid a odvoz suti', unit:'m³', price:600}
+    ]
+  };
+  // Pro ostatní profese se v UI dá přidávat libovolné vlastní položky.
+  // Všechno se ukládá odděleně pro každou profesi.
+
+  // Expozice
+  return {
+    loadTheme, toggleTheme, toast,
+    saveBlock, loadBlock, loadAll,
+    exportPDF, print, emailHTML, logout,
+    Currency, PROFESSIONS, PRICEBOOK, isTrialActive
+  };
+})();
+
+// Auto-load theme
+document.addEventListener('DOMContentLoaded', App.loadTheme);
+
+// ===== Reusable komponenty na stránkách =====
+
+// Ceníková tabulka – dynamická práce s položkami
+function renderPriceTable(rootId, professionKey){
+  const root = document.getElementById(rootId);
+  if(!root) return;
+
+  // Načti uložené položky (uživatelské) a připravené defaulty
+  const saved = App.loadBlock('cenik', professionKey, { items:[], vat:21 });
+  const defaults = App.PRICEBOOK[professionKey] || [];
+  // Sloučím – uložené beru jako zdroj pravdy, defaulty přidám jen pokud chybí podle jména
+  const map = new Map((saved.items||[]).map(it=> [it.name+it.unit, it]));
+  defaults.forEach(it=>{
+    const k = it.name+it.unit;
+    if(!map.has(k)) map.set(k, {...it, qty:0});
+  });
+  let items = Array.from(map.values());
+
+  function recalc(){
+    let subtotal = 0;
+    items.forEach(it=> subtotal += (App.Currency.num(it.qty) * App.Currency.num(it.price)));
+    const vat = App.Currency.num(saved.vat||21);
+    const total = subtotal * (1 + vat/100);
+    root.querySelector('[data-subtotal]').textContent = App.Currency.czk(subtotal);
+    root.querySelector('[data-vat]').textContent = vat.toFixed(0) + ' %';
+    root.querySelector('[data-total]').textContent = App.Currency.czk(total);
+  }
+
+  function save(){
+    App.saveBlock('cenik', professionKey, { items, vat: App.Currency.num(root.querySelector('[name=vat]').value||21) });
+  }
+
+  root.innerHTML = `
+    <div class="flex app-only">
+      <select id="profSel" class="input" style="max-width:260px"></select>
+      <button class="btn" id="addRow">+ Položka</button>
+      <button class="btn ok" id="save">Uložit</button>
+      <div class="right small">DPH:
+        <input class="input" style="width:80px; display:inline-block" type="number" step="1" min="0" max="30" name="vat" value="${saved.vat||21}">
+      </div>
+    </div>
+
+    <table class="table mt12">
+      <thead>
+        <tr><th>Název</th><th>Jedn.</th><th>Cena bez DPH</th><th>Množství</th><th>Mezisoučet</th><th class="app-only">Akce</th></tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+
+    <div class="flex mt16">
+      <div><strong>Mezisoučet:</strong> <span data-subtotal>0 Kč</span></div>
+      <div class="right"><strong>DPH:</strong> <span data-vat>—</span></div>
+      <div class="right"><strong>Celkem s DPH:</strong> <span data-total>0 Kč</span></div>
+    </div>
+  `;
+
+  // Profese select
+  const sel = root.querySelector('#profSel');
+  App.PROFESSIONS.forEach(key=>{
+    const opt = document.createElement('option');
+    opt.value = key; opt.textContent = key;
+    if(key===professionKey) opt.selected = true;
+    sel.appendChild(opt);
+  });
+  sel.addEventListener('change', ()=> {
+    // přepnutí profese – uložíme a znovu vykreslíme
+    save();
+    window.location.href = `cenik.html?prof=${encodeURIComponent(sel.value)}`;
+  });
+
+  const tbody = root.querySelector('#rows');
+
+  function draw(){
+    tbody.innerHTML = '';
+    items.forEach((it, idx)=>{
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><input class="input" value="${it.name}"></td>
+        <td style="width:90px"><input class="input" value="${it.unit}"></td>
+        <td style="width:150px"><input class="input" type="number" step="0.01" value="${it.price}"></td>
+        <td style="width:140px"><input class="input" type="number" step="0.01" value="${it.qty||0}"></td>
+        <td data-rowtotal>${App.Currency.czk((App.Currency.num(it.qty)*App.Currency.num(it.price)))}</td>
+        <td class="app-only"><button class="btn danger" data-del>✕</button></td>
+      `;
+      // Handlery
+      const [nameInp, unitInp, priceInp, qtyInp] = tr.querySelectorAll('input');
+      const rowTotal = tr.querySelector('[data-rowtotal]');
+      nameInp.addEventListener('input', e=>{ it.name = e.target.value; save(); });
+      unitInp.addEventListener('input', e=>{ it.unit = e.target.value; save(); });
+      priceInp.addEventListener('input', e=>{ it.price = e.target.value; rowTotal.textContent = App.Currency.czk(App.Currency.num(it.qty)*App.Currency.num(it.price)); recalc(); save(); });
+      qtyInp.addEventListener('input', e=>{ it.qty = e.target.value; rowTotal.textContent = App.Currency.czk(App.Currency.num(it.qty)*App.Currency.num(it.price)); recalc(); save(); });
+      const del = tr.querySelector('[data-del]');
+      if(del) del.addEventListener('click', ()=>{ items.splice(idx,1); draw(); recalc(); save(); });
+      tbody.appendChild(tr);
+    });
+    recalc();
+  }
+  draw();
+
+  root.querySelector('#addRow').addEventListener('click', ()=>{
+    items.push({name:'Nová položka', unit:'ks', price:0, qty:0});
+    draw(); save();
+  });
+  root.querySelector('#save').addEventListener('click', ()=> save());
+  root.querySelector('[name=vat]').addEventListener('input', ()=>{ recalc(); save(); });
+}
+
+// Pomocník: načtení parametru z URL
+function getParam(name){
+  const url = new URL(window.location.href);
+  return url.searchParams.get(name);
+}
+
+// Export button helpers (použij stejné selektory na každé stránce)
+function bindExportButtons(scopeSelector){
+  const scope = scopeSelector || 'main, .export-scope, body';
+  const pdfBtn = document.querySelector('[data-export-pdf]');
+  const prnBtn = document.querySelector('[data-export-print]');
+  const emlBtn = document.querySelector('[data-export-email]');
+
+  if(pdfBtn) pdfBtn.addEventListener('click', ()=> App.exportPDF(scope, document.title.replaceAll(' ','_')+'.pdf'));
+  if(prnBtn) prnBtn.addEventListener('click', ()=> App.print(scope));
+  if(emlBtn) emlBtn.addEventListener('click', ()=>{
+    const to = prompt('Zadej e‑mail příjemce (nepovinné):','');
+    App.emailHTML(scope, document.title, to||'');
+  });
+}
+
+// Generátor smlouvy – vrací čisté HTML (bez tlačítek)
+function buildContractHTML(formData){
+  // formData: objekt ze stránky vytvoritsmlouvu.html
+  const d = (k)=> (formData[k]||'').toString();
+
+  // Volitelné klauzule – pole textů
+  const clauses = (formData.clauses||[]).map((t,i)=>`<li>${t}</li>`).join('');
+
+  return `
+  <div class="export-scope contract-wide">
+    <h1 style="text-align:center; margin:0 0 10px;">SMLOUVA O DÍLO</h1>
+    <div class="small" style="text-align:center; margin-bottom:16px;">verze 2.0 • generováno Altiven App</div>
+
+    <h3>I. Smluvní strany</h3>
+    <p><strong>Zhotovitel:</strong> ${d('z_firma')} • IČO: ${d('z_ico')} • DIČ: ${d('z_dic')} • Sídlo: ${d('z_sidlo')} • Kontakt: ${d('z_kontakt')}</p>
+    <p><strong>Objednatel:</strong> ${d('o_jmeno')} • IČO: ${d('o_ico')} • DIČ: ${d('o_dic')} • Sídlo: ${d('o_sidlo')} • Kontakt: ${d('o_kontakt')}</p>
+
+    <h3>II. Předmět smlouvy</h3>
+    <p>Předmětem této smlouvy je provedení prací: <strong>${d('popis_praci')}</strong> na adrese <strong>${d('misto')}</strong>.</p>
+
+    <h3>III. Cena a platební podmínky</h3>
+    <p>Celková cena díla činí <strong>${d('cena_celkem')}</strong> (včetně DPH). Záloha ve výši ${d('zaloha')} je splatná do ${d('zaloha_do')}.</p>
+    <p>Zbývající část ceny je splatná do ${d('doplatek_do')} na účet ${d('ucet')} (VS: ${d('vs')}).</p>
+
+    <h3>IV. Termíny</h3>
+    <p>Zahájení: ${d('term_zacatek')} • Dokončení: ${d('term_konec')} • Předání: ${d('term_predani')}</p>
+
+    <h3>V. Povinnosti objednatele</h3>
+    <ul>
+      <li>Zajistit přístup na stavbu a dostatečné pracovní podmínky.</li>
+      <li>Zajistit přístup k <strong>vodě, elektřině a hygienickému zázemí</strong> po dobu realizace.</li>
+      <li>Uhradit cenu díla dle této smlouvy v termínech.</li>
+    </ul>
+
+    <h3>VI. Povinnosti zhotovitele</h3>
+    <ul>
+      <li>Provést dílo s odbornou péčí dle platných norem a technologických postupů.</li>
+      <li>Udržovat pořádek na stavbě a minimalizovat zásah do provozu objektu.</li>
+      <li>Oznámit včas překážky bránící dokončení díla.</li>
+    </ul>
+
+    <h3>VII. Záruka a odpovědnost</h3>
+    <p>Na dílo je poskytována záruka ${d('zaruka')} měsíců. Skryté vady budou řešeny dle občanského zákoníku.</p>
+
+    <h3>VIII. Sankce</h3>
+    <ul>
+      <li>Smluvní pokuta za prodlení objednatele s úhradou: ${d('pokuta_obj')} / den z prodlení.</li>
+      <li>Smluvní pokuta za neoprávněné odstoupení objednatele: ${d('pokuta_odstoupeni')}.</li>
+      <li>Úrok z prodlení dle zákona není tímto dotčen.</li>
+    </ul>
+
+    <h3>IX. BOZP a odpady</h3>
+    <p>Objednatel je povinen zajistit bezpečný přístup a podmínky BOZP. Odpad bude likvidován v souladu s právními předpisy; náklady nese ${d('odpad_plati')}.</p>
+
+    <h3>X. Předání a převzetí</h3>
+    <p>Dílo bude předáno formou předávacího protokolu dne ${d('term_predani')}. Nedodělky budou vypsány v protokolu s termínem odstranění.</p>
+
+    <h3>XI. Volitelná ustanovení</h3>
+    <ol>${clauses}</ol>
+
+    <h3>XII. Závěrečná ustanovení</h3>
+    <p>Tato smlouva nabývá účinnosti dnem podpisu obou stran. Je vyhotovena v ${d('pocet_vyhotoveni')||'2'} stejnopisech.</p>
+
+    <div class="form-row" style="margin-top:26px">
+      <div>
+        <strong>Za zhotovitele:</strong><br><br>
+        ........................................<br>
+        ${d('z_firma')}
+      </div>
+      <div>
+        <strong>Za objednatele:</strong><br><br>
+        ........................................<br>
+        ${d('o_jmeno')}
+      </div>
+    </div>
+  </div>`;
+}
+
+// Uložení / načtení „smluvních dat“ mezi stránkami
+function saveContractData(obj){
+  const all = App.loadAll('contract', {});
+  all['current'] = obj;
+  App.saveBlock('contract', 'all', all);
+}
+function loadContractData(){
+  const all = App.loadAll('contract', {});
+  return (all && all['current']) ? all['current'] : {};
+}
+
+// Exporty – automaticky navážeme na stránkách
+document.addEventListener('DOMContentLoaded', ()=> bindExportButtons('.export-scope, main'));
+
+// Expose pro inline onclick v HTML (když je třeba)
+window.App = App;
+window.renderPriceTable = renderPriceTable;
+window.getParam = getParam;
+window.buildContractHTML = buildContractHTML;
+window.saveContractData = saveContractData;
+window.loadContractData = loadContractData;
