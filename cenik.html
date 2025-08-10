@@ -1,0 +1,331 @@
+<!DOC<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Ceník prací – Altiven 2.0</title>
+  <link rel="stylesheet" href="css/style.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    .grid-tiles { display:grid; grid-template-columns: repeat(auto-fill,minmax(220px,1fr)); gap:12px; margin-top:16px; }
+    .tile { display:block; border:1px solid #ddd; border-radius:10px; padding:14px; text-decoration:none; color:inherit; background:#fff; }
+    .tile-ico { font-size:24px; }
+    .tile-title { font-weight:700; margin-top:6px; }
+    .tile-desc { font-size:14px; color:#666; margin-top:4px; }
+    .price-input,.qty-input { width:110px; }
+    .readonly { background:#f3f3f3; pointer-events:none; }
+    .table-wrap { overflow:auto; margin-top:12px; }
+    table { width:100%; border-collapse:collapse; }
+    th,td { padding:8px; border:1px solid #ddd; }
+    th { background:#f7f7f7; }
+    .right { text-align:right; }
+    .badge { display:inline-block; padding:4px 8px; border-radius:999px; background:#eee; font-size:12px; font-weight:600; }
+    .badge.success { background:#d7f5e3; color:#0a7f38; }
+  </style>
+</head>
+<body>
+  <header class="main-header app-only">
+    <div class="logo"><span class="logo-sm">📋</span><h1 id="pageTitle">Ceník prací</h1></div>
+    <nav class="top-actions">
+      <a class="btn ghost" href="index.html">← Zpět</a>
+      <button class="btn" onclick="location.href='novanabidka.html'">Pokračovat na nabídku →</button>
+    </nav>
+  </header>
+
+  <main class="container">
+    <!-- 1) MŘÍŽKA PROFESÍ (když není ?p=) -->
+    <section id="profeseGrid" class="grid-tiles" style="display:none"></section>
+
+    <!-- 2) DETAIL CENÍKU (když je ?p=) -->
+    <section id="cenikCard" class="card" style="display:none">
+      <div class="flex" style="justify-content:space-between;align-items:center;">
+        <h2 id="hlavicka">Položky a výpočet</h2>
+        <span id="premiumBadge" class="badge">FREE</span>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+          <tr>
+            <th style="min-width:260px;">Práce</th>
+            <th style="min-width:140px;">Cena (Kč/jedn.)</th>
+            <th style="min-width:140px;">Množství</th>
+            <th style="min-width:120px;">Jednotka</th>
+            <th style="min-width:140px;">Celkem (Kč)</th>
+          </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+          <tfoot>
+          <tr>
+            <td colspan="4" class="right"><strong>Mezisoučet</strong></td>
+            <td><strong id="sum">0.00</strong></td>
+          </tr>
+          </tfoot>
+        </table>
+      </div>
+
+      <div class="flex app-only" style="margin-top:12px; gap:8px;">
+        <button id="savePrices" class="btn" style="display:none">💾 Uložit ceny (PREMIUM)</button>
+        <button id="sendToOffer" class="btn ok">➕ Přenést vybrané položky do nabídky</button>
+      </div>
+    </section>
+  </main>
+
+  <footer class="app-footer app-only"><p>© 2025 Altiven</p></footer>
+
+  <script>
+  document.addEventListener('DOMContentLoaded', () => {
+    // ---- 1) Definice profesí a položek (klíče = ?p=) ----
+    const LABELS = {
+      obkladaci:"Obkladači", zednici:"Zedníci", maliri:"Malíři a natěrači",
+      elektrikari:"Elektrikáři", instalateri:"Instalatéři", tesari:"Tesaři",
+      pokryvaci:"Pokrývači", klempiri:"Klempíři", sadrokartonari:"Sádrokartonáři",
+      podlahari:"Podlaháři", truhlari:"Truhláři", sklenari:"Sklenáři",
+      kamenici:"Kameníci", zamecnici:"Zámečníci", svareci:"Svářeči",
+      automechanici:"Automechanici", autoklempiri:"Autoklempíři", autolakyrnici:"Autolakýrníci",
+      zahradnici:"Zahradníci", kovari:"Kováři", montaznici:"Montážníci nábytku",
+      uklid:"Úklidové služby", ostatni:"Ostatní práce"
+    };
+
+    const ITEMS = {
+      obkladaci: [
+        { name:"Pokládka obkladů – standard", unitPrice:500, unit:"m²", qtyDefault:0 },
+        { name:"Pokládka obkladů – složitá", unitPrice:700, unit:"m²", qtyDefault:0 },
+        { name:"Spárování a čištění", unitPrice:120, unit:"m²", qtyDefault:0 }
+      ],
+      zednici: [
+        { name:"Zdění příček", unitPrice:450, unit:"m²", qtyDefault:0 },
+        { name:"Omítky ruční", unitPrice:180, unit:"m²", qtyDefault:0 },
+        { name:"Bourací práce", unitPrice:350, unit:"hod", qtyDefault:0 }
+      ],
+      maliri: [
+        { name:"Malba bílá", unitPrice:65, unit:"m²", qtyDefault:0 },
+        { name:"Malba tónovaná", unitPrice:90, unit:"m²", qtyDefault:0 },
+        { name:"Štukování", unitPrice:140, unit:"m²", qtyDefault:0 }
+      ],
+      elektrikari: [
+        { name:"Nové rozvody – práce", unitPrice:450, unit:"hod", qtyDefault:0 },
+        { name:"Montáž zásuvky/vypínače", unitPrice:250, unit:"ks", qtyDefault:0 },
+        { name:"Montáž světla", unitPrice:350, unit:"ks", qtyDefault:0 }
+      ],
+      instalateri: [
+        { name:"Rozvody vody/odpadu – práce", unitPrice:420, unit:"hod", qtyDefault:0 },
+        { name:"Montáž baterie/sanit.", unitPrice:350, unit:"ks", qtyDefault:0 },
+        { name:"Tlaková zkouška", unitPrice:600, unit:"zakázka", qtyDefault:0 }
+      ],
+      tesari: [
+        { name:"Krov/konstrukce – práce", unitPrice:480, unit:"hod", qtyDefault:0 },
+        { name:"Montáž latí", unitPrice:60, unit:"m²", qtyDefault:0 },
+        { name:"Opravy konstrukcí", unitPrice:520, unit:"hod", qtyDefault:0 }
+      ],
+      pokryvaci: [
+        { name:"Pokládka krytiny", unitPrice:220, unit:"m²", qtyDefault:0 },
+        { name:"Montáž doplňků", unitPrice:350, unit:"ks", qtyDefault:0 },
+        { name:"Demontáž staré krytiny", unitPrice:140, unit:"m²", qtyDefault:0 }
+      ],
+      klempiri: [
+        { name:"Okapy a svody – montáž", unitPrice:220, unit:"m", qtyDefault:0 },
+        { name:"Lemování", unitPrice:260, unit:"m", qtyDefault:0 },
+        { name:"Parapety – montáž", unitPrice:300, unit:"ks", qtyDefault:0 }
+      ],
+      sadrokartonari: [
+        { name:"SDK příčky", unitPrice:380, unit:"m²", qtyDefault:0 },
+        { name:"SDK podhledy", unitPrice:360, unit:"m²", qtyDefault:0 },
+        { name:"Tmelení a broušení", unitPrice:90, unit:"m²", qtyDefault:0 }
+      ],
+      podlahari: [
+        { name:"Pokládka vinyl/lamino", unitPrice:180, unit:"m²", qtyDefault:0 },
+        { name:"Lištování", unitPrice:60, unit:"m", qtyDefault:0 },
+        { name:"Samonivelační stěrka", unitPrice:120, unit:"m²", qtyDefault:0 }
+      ],
+      truhlari: [
+        { name:"Montáž nábytku", unitPrice:450, unit:"hod", qtyDefault:0 },
+        { name:"Drobné úpravy", unitPrice:350, unit:"hod", qtyDefault:0 },
+        { name:"Osazení dveří", unitPrice:600, unit:"ks", qtyDefault:0 }
+      ],
+      sklenari: [
+        { name:"Výřez a osazení skla", unitPrice:450, unit:"hod", qtyDefault:0 },
+        { name:"Tmelování", unitPrice:220, unit:"hod", qtyDefault:0 },
+        { name:"Výměna okenní tabule", unitPrice:550, unit:"ks", qtyDefault:0 }
+      ],
+      kamenici: [
+        { name:"Osazení kamene", unitPrice:700, unit:"m²", qtyDefault:0 },
+        { name:"Řezání a broušení", unitPrice:600, unit:"hod", qtyDefault:0 },
+        { name:"Spárování obkladu", unitPrice:150, unit:"m²", qtyDefault:0 }
+      ],
+      zamecnici: [
+        { name:"Montáž kovových prvků", unitPrice:500, unit:"hod", qtyDefault:0 },
+        { name:"Dílenské práce", unitPrice:450, unit:"hod", qtyDefault:0 },
+        { name:"Montáž zábradlí", unitPrice:800, unit:"bm", qtyDefault:0 }
+      ],
+      svareci: [
+        { name:"Sváření MIG", unitPrice:600, unit:"hod", qtyDefault:0 },
+        { name:"Sváření TIG", unitPrice:650, unit:"hod", qtyDefault:0 },
+        { name:"Příprava materiálu", unitPrice:400, unit:"hod", qtyDefault:0 }
+      ],
+      automechanici: [
+        { name:"Mechanické práce", unitPrice:700, unit:"hod", qtyDefault:0 },
+        { name:"Diagnostika", unitPrice:900, unit:"zakázka", qtyDefault:0 },
+        { name:"Výměna brzd", unitPrice:1200, unit:"náprava", qtyDefault:0 }
+      ],
+      autoklempiri: [
+        { name:"Klempířské práce", unitPrice:700, unit:"hod", qtyDefault:0 },
+        { name:"Rovnání karoserie", unitPrice:900, unit:"hod", qtyDefault:0 },
+        { name:"Výměna dílu karoserie", unitPrice:1500, unit:"ks", qtyDefault:0 }
+      ],
+      autolakyrnici: [
+        { name:"Lakování dílu", unitPrice:1800, unit:"ks", qtyDefault:0 },
+        { name:"Příprava k lakování", unitPrice:600, unit:"hod", qtyDefault:0 },
+        { name:"Leštění", unitPrice:500, unit:"hod", qtyDefault:0 }
+      ],
+      zahradnici: [
+        { name:"Údržba zahrady", unitPrice:400, unit:"hod", qtyDefault:0 },
+        { name:"Pokládka trávníku", unitPrice:120, unit:"m²", qtyDefault:0 },
+        { name:"Střih keřů", unitPrice:350, unit:"hod", qtyDefault:0 }
+      ],
+      kovari: [
+        { name:"Zakázková výroba", unitPrice:800, unit:"hod", qtyDefault:0 },
+        { name:"Montáž výrobků", unitPrice:600, unit:"hod", qtyDefault:0 },
+        { name:"Povrchová úprava", unitPrice:550, unit:"hod", qtyDefault:0 }
+      ],
+      montaznici: [
+        { name:"Montáž nábytku", unitPrice:450, unit:"hod", qtyDefault:0 },
+        { name:"Instalace spotřebičů", unitPrice:700, unit:"ks", qtyDefault:0 },
+        { name:"Doprava a manipulace", unitPrice:18, unit:"km", qtyDefault:0 }
+      ],
+      uklid: [
+        { name:"Běžný úklid", unitPrice:250, unit:"hod", qtyDefault:0 },
+        { name:"Generální úklid", unitPrice:350, unit:"hod", qtyDefault:0 },
+        { name:"Mytí oken", unitPrice:35, unit:"m²", qtyDefault:0 }
+      ],
+      ostatni: [
+        { name:"Drobné práce", unitPrice:380, unit:"hod", qtyDefault:0 },
+        { name:"Výjezd/diagnostika", unitPrice:600, unit:"zakázka", qtyDefault:0 },
+        { name:"Materiál – paušál", unitPrice:300, unit:"zakázka", qtyDefault:0 }
+      ]
+    };
+
+    // ---- 2) Pomocné ----
+    const $ = (s,r=document)=>r.querySelector(s);
+    const $$ = (s,r=document)=>Array.from(r.querySelectorAll(s));
+    const params = new URLSearchParams(location.search);
+    const PROF = (params.get('p')||'').toLowerCase();
+    const fmt = n => (Math.round((n+Number.EPSILON)*100)/100).toFixed(2);
+    const isPremium = () => localStorage.getItem('isPremium') === '1';
+
+    // ---- 3) Render mřížky (bez parametru) ----
+    function renderGrid(){
+      $('#pageTitle').textContent = 'Ceník prací – výběr profese';
+      const grid = $('#profeseGrid');
+      grid.style.display = '';
+      grid.innerHTML = Object.entries(LABELS).map(([key,label]) => `
+        <a class="tile" href="cenik.html?p=${key}">
+          <div class="tile-ico">🛠️</div>
+          <div class="tile-title">${label}</div>
+          <div class="tile-desc">Otevřít ceník</div>
+        </a>
+      `).join('');
+    }
+
+    // ---- 4) Render tabulky (s parametrem) ----
+    function setPremiumUI(){
+      const badge = $('#premiumBadge');
+      const saveBtn = $('#savePrices');
+      const inputs = $$('input[data-price]');
+      if (isPremium()){
+        badge.textContent = 'PREMIUM';
+        badge.classList.add('success');
+        saveBtn.style.display = 'inline-block';
+        inputs.forEach(i=>i.removeAttribute('readonly'));
+      } else {
+        badge.textContent = 'FREE';
+        badge.classList.remove('success');
+        saveBtn.style.display = 'none';
+        inputs.forEach(i=>i.setAttribute('readonly','readonly'));
+      }
+    }
+
+    function bindCalc(){
+      $$('input[data-price], input[data-qty]').forEach(inp=>{
+        inp.addEventListener('input', recalc);
+        inp.addEventListener('change', recalc);
+      });
+      $('#savePrices').addEventListener('click', savePrices);
+      $('#sendToOffer').addEventListener('click', sendToOffer);
+    }
+
+    function recalc(){
+      let sum = 0;
+      $$('#rows tr').forEach(tr=>{
+        const price = parseFloat(tr.querySelector('input[data-price]').value) || 0;
+        const qty   = parseFloat(tr.querySelector('input[data-qty]').value) || 0;
+        const total = price * qty;
+        tr.querySelector('[data-total]').textContent = fmt(total);
+        sum += total;
+      });
+      $('#sum').textContent = fmt(sum);
+    }
+
+    function savePrices(){
+      if (!isPremium()){ alert('Úprava cen je jen pro Premium.'); return; }
+      const rows = $$('#rows tr').map(tr => ({
+        name: tr.children[0].textContent,
+        unitPrice: parseFloat(tr.querySelector('input[data-price]').value) || 0,
+        unit: tr.children[3].textContent,
+        qtyDefault: parseFloat(tr.querySelector('input[data-qty]').value) || 0
+      }));
+      localStorage.setItem(`pricing_${PROF}`, JSON.stringify(rows));
+      alert('Ceny uloženy.');
+    }
+
+    function sendToOffer(){
+      const items = $$('#rows tr').map(tr => ({
+        name: tr.children[0].textContent,
+        unitPrice: parseFloat(tr.querySelector('input[data-price]').value) || 0,
+        unit: tr.children[3].textContent,
+        qty: parseFloat(tr.querySelector('input[data-qty]').value) || 0,
+        total: parseFloat(tr.querySelector('[data-total]').textContent.replace(',','.')) || 0
+      })).filter(x => x.qty > 0);
+      localStorage.setItem('offer_from_pricing', JSON.stringify({
+        profession: PROF,
+        label: LABELS[PROF] || PROF,
+        items
+      }));
+      location.href = 'novanabidka.html';
+    }
+
+    function renderTable(items){
+      $('#profeseGrid').style.display = 'none';
+      $('#cenikCard').style.display = '';
+      $('#pageTitle').textContent = `Ceník – ${LABELS[PROF] || 'Profese'}`;
+      $('#hlavicka').textContent = `Položky – ${LABELS[PROF] || PROF}`;
+
+      let saved = null;
+      try { saved = JSON.parse(localStorage.getItem(`pricing_${PROF}`) || 'null'); } catch(e){}
+      const data = (saved && Array.isArray(saved) && saved.length) ? saved : items;
+
+      $('#rows').innerHTML = data.map(it => `
+        <tr>
+          <td>${it.name}</td>
+          <td><input data-price class="price-input" type="number" min="0" step="0.01" value="${it.unitPrice}"></td>
+          <td><input data-qty class="qty-input" type="number" min="0" step="0.01" value="${it.qtyDefault || 0}"></td>
+          <td>${it.unit || ''}</td>
+          <td><span data-total>0.00</span></td>
+        </tr>
+      `).join('');
+
+      setPremiumUI();
+      bindCalc();
+      recalc();
+    }
+
+    // ---- 5) Start ----
+    if (!PROF || !ITEMS[PROF]) {
+      renderGrid();
+    } else {
+      renderTable(ITEMS[PROF]);
+    }
+  });
+  </script>
+</body>
+</html>

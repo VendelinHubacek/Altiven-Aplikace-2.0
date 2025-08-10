@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Aplikace pro řemeslníky 2.0 – Altiven</title>
+
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#0b5fff">
+
+  <!-- Styl -->
+  <link rel="stylesheet" href="css/style.css"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <header class="main-header app-only">
+    <div class="logo">
+      <span class="logo-sm">🔧</span>
+      <h1>Altiven – Aplikace 2.0</h1>
+    </div>
+    <nav class="top-actions">
+      <button class="btn ghost" onclick="App?.toggleTheme?.()">🌓 Tmavý režim</button>
+      <button class="btn danger" onclick="App?.logout?.()">Odhlásit</button>
+    </nav>
+  </header>
+
+  <main class="container">
+    <section class="intro card">
+      <h2>Vítej zpět</h2>
+      <p>Verze 2.0 je rychlá, přehledná a funguje i offline. Všechno se ukládá do
+        <strong>localStorage</strong> a pokud přidáš klíče Firebase, zapne se automatická synchronizace.</p>
+      <div class="badges app-only">
+        <span class="badge">PWA‑ready</span>
+        <span class="badge">Offline mód</span>
+        <span class="badge">Export do PDF</span>
+        <span class="badge">Skrytá tlačítka v exportu</span>
+      </div>
+    </section>
+
+    <section class="grid-tiles">
+      <a class="tile" href="./cenik.html">
+        <div class="tile-ico">📋</div>
+        <div class="tile-title">Ceník prací</div>
+        <div class="tile-desc">23 profesí, výpočty a (v premium) editace cen</div>
+      </a>
+
+      <a class="tile" href="./novanabidka.html">
+        <div class="tile-ico">📝</div>
+        <div class="tile-title">Nová nabídka</div>
+        <div class="tile-desc">Rychlá kalkulace a odeslání zákazníkovi</div>
+      </a>
+
+      <a class="tile" href="./vytvoritsmlouvu.html">
+        <div class="tile-ico">📄</div>
+        <div class="tile-title">Vytvořit smlouvu</div>
+        <div class="tile-desc">Obsáhlá smlouva s volitelnými klauzulemi</div>
+      </a>
+
+      <a class="tile" href="./predavaciprotokol.html">
+        <div class="tile-ico">✅</div>
+        <div class="tile-title">Předávací protokol</div>
+        <div class="tile-desc">Podpisy, termíny, export</div>
+      </a>
+
+      <a class="tile" href="./generovatfakturu.html">
+        <div class="tile-ico">💰</div>
+        <div class="tile-title">Generovat fakturu</div>
+        <div class="tile-desc">Variabilní symbol, splatnost, QR</div>
+      </a>
+    </section>
+
+    <section class="news card">
+      <h3>Novinky ve 2.0</h3>
+      <ul>
+        <li>Univerzální ceník pro 23 profesí na jedné stránce.</li>
+        <li>Premium uživatelé mohou upravovat sazby a ukládat je do cloudu.</li>
+        <li>Tlačítka a ovládání s třídou <code>.app-only</code> se v PDF/e‑mailu neschovají.</li>
+      </ul>
+    </section>
+  </main>
+
+  <footer class="app-footer">
+    <p>© 2025 Altiven, s.r.o. • Aplikace pro řemeslníky 2.0</p>
+  </footer>
+
+  <!-- Export do PDF (používá se na podstránkách) -->
+  <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js" defer></script>
+
+  <!-- Hlavní logika aplikace -->
+  <script src="js/script.js"></script>
+
+  <!-- Firebase SDK (compat) – pořadí důležité -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+  <!-- Vrstva pro synchronizaci do Firestore -->
+  <script src="js/firebase.js"></script>
+  <script>
+    // bezpečný init – pokud už je app inicializovaná nebo FirebaseSync není, nic se nerozbije
+    try {
+      if (typeof FirebaseSync !== 'undefined' && !firebase.apps.length) {
+        FirebaseSync.init({
+          apiKey: "TVŮJ_API_KEY",
+          authDomain: "TVŮJ-PROJEKT.firebaseapp.com",
+          projectId: "TVŮJ-PROJEKT",
+          storageBucket: "TVŮJ-PROJEKT.appspot.com",
+          messagingSenderId: "XXXXXXXX",
+          appId: "1:XXXXXXXX:web:YYYYYYYY"
+        });
+      }
+    } catch(e) { console.warn('Firebase init přeskočen:', e); }
+  </script>
+
+  <!-- Registrace service workeru (PWA / offline) -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./service-worker.js').catch(console.error);
+      });
+    }
+  </script>
+</body>
+</html>

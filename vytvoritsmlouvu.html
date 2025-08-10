@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vytvořit smlouvu – Altiven 2.0</title>
+
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#0b5fff">
+
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="main-header app-only">
+    <div class="logo"><span class="logo-sm">📄</span><h1>Vytvořit smlouvu</h1></div>
+    <nav class="top-actions">
+      <a class="btn ghost" href="index.html">← Zpět</a>
+      <button class="btn" onclick="location.href='predavaciprotokol.html'">Přejít na předávací protokol →</button>
+    </nav>
+  </header>
+
+  <main class="container contract-wide">
+    <!-- ==== TVŮJ PŮVODNÍ OBSAH – BEZE ZMĚN ==== -->
+    <section class="card">
+      <h2>Údaje smluvních stran</h2>
+      <div class="form-row">
+        <div>
+          <label>Zhotovitel – firma</label>
+          <input class="input" id="z_firma" placeholder="Altiven, s.r.o.">
+        </div>
+        <div>
+          <label>IČO</label>
+          <input class="input" id="z_ico" placeholder="12345678">
+        </div>
+      </div>
+      <div class="form-row mt12">
+        <div>
+          <label>DIČ</label>
+          <input class="input" id="z_dic" placeholder="CZ12345678">
+        </div>
+        <div>
+          <label>Sídlo / adresa</label>
+          <input class="input" id="z_sidlo" placeholder="Ulice, Město">
+        </div>
+      </div>
+      <div class="form-row mt12">
+        <div>
+          <label>Kontakt</label>
+          <input class="input" id="z_kontakt" placeholder="telefon, e‑mail">
+        </div>
+        <div>
+          <label>Objednatel – jméno/firma</label>
+          <input class="input" id="o_jmeno" placeholder="Jan Novák / Firma s.r.o.">
+        </div>
+      </div>
+      <div class="form-row mt12">
+        <div>
+          <label>Objednatel – IČO</label>
+          <input class="input" id="o_ico" placeholder="87654321">
+        </div>
+        <div>
+          <label>Objednatel – DIČ</label>
+          <input class="input" id="o_dic" placeholder="CZ87654321">
+        </div>
+      </div>
+      <div class="form-row mt12">
+        <div>
+          <label>Objednatel – sídlo/adresa</label>
+          <input class="input" id="o_sidlo" placeholder="Ulice, Město">
+        </div>
+        <div>
+          <label>Objednatel – kontakt</label>
+          <input class="input" id="o_kontakt" placeholder="telefon, e‑mail">
+        </div>
+      </div>
+    </section>
+
+    <section class="card mt16">
+      <h2>Předmět, cena, termíny</h2>
+      <div class="form-row">
+        <div>
+          <label>Popis prací</label>
+          <input class="input" id="popis_praci" placeholder="Např. rekonstrukce koupelny…">
+        </div>
+        <div>
+          <label>Místo plnění</label>
+          <input class="input" id="misto" placeholder="Adresa">
+        </div>
+      </div>
+      <div class="form-row mt12">
+        <div>
+          <label>Cena celkem (s DPH)</label>
+          <input class="input" id="cena_celkem" placeholder="např. 150 000 Kč">
+        </div>
+        <div>
+          <label>Záruka (měsíce)</label>
+          <input class="input" id="zaruka" type="number" min="0" step="1" value="24">
+        </div>
+      </div>
+      <div class="form-row mt12">
+        <div>
+          <label>Záloha (částka)</label>
+          <input class="input" id="zaloha" placeholder="např. 30 000 Kč">
+        </div>
+        <div>
+          <label>Záloha splatná do (datum)</label>
+          <input class="input" id="zaloha_do" type="date">
+        </div>
+      </div>
+      <div class="form-row mt12">
+        <div>
+          <label>Doplatek splatný do (datum)</label>
+          <input class="input" id="doplatek_do" type="date">
+        </div>
+        <div>
+          <label>Účet / VS</label>
+          <input class="input" id="ucet" placeholder="CZ..., banka">
+        </div>
+      </div>
+      <div class="form-row mt12">
+        <div>
+          <label>Variabilní symbol</label>
+          <input class="input" id="vs" placeholder="např. 20250001">
+        </div>
+        <div>
+          <label>Předání (datum)</label>
+          <input class="input" id="term_predani" type="date">
+        </div>
+      </div>
+      <div class="form-row mt12">
+        <div>
+          <label>Zahájení</label>
+          <input class="input" id="term_zacatek" type="date">
+        </div>
+        <div>
+          <label>Dokončení</label>
+          <input class="input" id="term_konec" type="date">
+        </div>
+      </div>
+    </section>
+
+    <section class="card mt16">
+      <h2>Volitelné klauzule</h2>
+      <div class="small">Zaškrtni, co chceš zahrnout. Můžeš je všechno <strong>zapnout jedním klikem</strong>.</div>
+      <div class="flex mt12 app-only">
+        <label class="flex" style="gap:8px">
+          <input type="checkbox" id="check_all">
+          <span>Zaškrtnout všechny</span>
+        </label>
+        <div class="right small">Tyto přepínače se v exportu neukážou.</div>
+      </div>
+
+      <div id="clauses" class="mt12"></div>
+
+      <div class="form-row mt12">
+        <div>
+          <label>Kdo hradí odpad</label>
+          <select class="input" id="odpad_plati">
+            <option value="zhotovitel">Zhotovitel</option>
+            <option value="objednatel">Objednatel</option>
+          </select>
+        </div>
+        <div>
+          <label>Pokuta objednatele za prodlení (částka/den)</label>
+          <input class="input" id="pokuta_obj" placeholder="např. 500 Kč">
+        </div>
+      </div>
+      <div class="form-row mt12">
+        <div>
+          <label>Pokuta za neoprávněné odstoupení</label>
+          <input class="input" id="pokuta_odstoupeni" placeholder="např. 15 % z ceny díla">
+        </div>
+        <div>
+          <label>Počet vyhotovení smlouvy</label>
+          <input class="input" id="pocet_vyhotoveni" type="number" min="1" value="2">
+        </div>
+      </div>
+    </section>
+
+    <div class="flex app-only mt16">
+      <button class="btn ok" id="showFinal">Zobrazit finální smlouvu</button>
+      <div class="right small">Finální výstup je na samostatné stránce bez tlačítek.</div>
+    </div>
+  </main>
+
+  <footer class="app-footer app-only"><p>© 2025 Altiven</p></footer>
+
+  <!-- Hlavní logika aplikace (definuje loadContractData/saveContractData atd.) -->
+  <script src="js/script.js"></script>
+
+  <!-- Firebase SDK (compat) – pořadí důležité -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+  <!-- Sync vrstva -->
+  <script src="js/firebase.js"></script>
+  <script>
+    FirebaseSync.init({
+      apiKey: "TVŮJ_API_KEY",
+      authDomain: "TVŮJ-PROJEKT.firebaseapp.com",
+      projectId: "TVŮJ-PROJEKT",
+      storageBucket: "TVŮJ-PROJEKT.appspot.com",
+      messagingSenderId: "XXXXXXXX",
+      appId: "1:XXXXXXXX:web:YYYYYYYY"
+    });
+  </script>
+
+  <!-- Registrace service workeru (PWA / offline) -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./service-worker.js').catch(console.error);
+      });
+    }
+  </script>
+
+  <!-- Logika této stránky (původní) -->
+  <script>
+  // 1) Kompletní seznam klauzulí (můžeš libovolně rozšířit)
+  const CLAUSE_TEXTS = [
+    "Objednatel zajistí po celou dobu realizace přístup k vodě, elektřině a hygienickému zázemí.",
+    "Objednatel předá staveniště bez překážek; zjištěné překážky prodlužují lhůty o dobu jejich trvání.",
+    "Zhotovitel je oprávněn přerušit práce při neuhrazení zálohy nebo při hrubém porušení povinností objednatele.",
+    "Vícenáklady vzniklé změnami zadání budou provedeny pouze na základě písemného souhlasu objednatele.",
+    "Zhotovitel odpovídá za kvalitu díla dle příslušných norem; běžné odchylky dle ČSN nejsou vadou.",
+    "Záruka se nevztahuje na vady způsobené nevhodným užíváním, nedostatečnou údržbou, nebo zásahy třetích osob.",
+    "Objednatel je povinen zajistit ochranu již provedených částí díla před poškozením třetími osobami.",
+    "Objednatel umožní zhotoviteli provést potřebné zkoušky a kontroly bez zbytečných průtahů.",
+    "Smluvní pokuta za neoprávněné odstoupení objednatele slouží jako paušalizovaná náhrada škody a ušlého zisku.",
+    "Drobné vícepráce do 5 % ceny díla lze fakturovat bez dodatku, pokud byly prokazatelně provedeny a odsouhlaseny.",
+    "Předání díla proběhne protokolárně; zjevné vady musí být uplatněny při předání, skryté bez zbytečného odkladu po zjištění.",
+    "Objednatel umožní bezpečný přístup na stavbu; porušení povinností BOZP je důvodem k přerušení prací.",
+    "Zhotovitel poskytuje záruku na provedené práce po dobu 24 měsíců od předání.",
+    "Veškeré vícepráce, změny nebo doplňující plnění musí být odsouhlaseny písemně formou dodatku.",
+    "V případě prodlení s dokončením díla hradí zhotovitel smluvní pokutu 0,1 % z ceny díla za každý den, max. 5 %.",
+    "Objednatel si vyhrazuje zadržet 5 % z ceny díla jako jistotu na vady; 1/2 po předání, 1/2 po záruce.",
+    "Zhotovitel neodpovídá za prodlení z důvodu vyšší moci (živel, stávka apod.); je povinen o tom informovat.",
+    "Zhotovitel může využít subdodavatele a odpovídá za jejich práci v plném rozsahu.",
+    "Smlouva může být vypovězena kteroukoli stranou bez důvodu s výpovědní lhůtou 14 dní; hradí se prokazatelně provedené práce.",
+    "Spory budou řešeny rozhodčím řízením při HK ČR; rozhodnutí je závazné.",
+    "Je‑li některé ustanovení neplatné, ostatní zůstávají v platnosti (salvátorská doložka).",
+    "Objednatel má právo průběžně kontrolovat kvalitu prací a vyžádat si doklady (certifikáty, protokoly)."
+  ];
+
+  // 2) Bezpečné načtení/uložení (funguje i když core funkce nejsou k dispozici)
+  function safeLoadContractData(){
+    try {
+      if (typeof loadContractData === 'function') return loadContractData() || {};
+    } catch(e){}
+    try { return JSON.parse(localStorage.getItem('contract_current') || '{}'); } catch(e){ return {}; }
+  }
+  function safeSaveContractData(data){
+    try {
+      if (typeof saveContractData === 'function') return saveContractData(data);
+    } catch(e){}
+    localStorage.setItem('contract_current', JSON.stringify(data));
+  }
+
+  const CONTRACT_INPUT_IDS = [
+    'z_firma','z_ico','z_dic','z_sidlo','z_kontakt',
+    'o_jmeno','o_ico','o_dic','o_sidlo','o_kontakt',
+    'popis_praci','misto','cena_celkem','zaloha','zaloha_do',
+    'doplatek_do','ucet','vs','term_predani','term_zacatek','term_konec',
+    'zaruka','pokuta_obj','pokuta_odstoupeni','pocet_vyhotoveni','odpad_plati'
+  ];
+
+  function renderClauses(){
+    const d = safeLoadContractData() || {};
+    const selected = new Set(Array.isArray(d.clauses) ? d.clauses : []);
+    const wrap = document.getElementById('clauses');
+    if (!wrap) return;
+
+    wrap.innerHTML = '';
+    CLAUSE_TEXTS.forEach((t, i) => {
+      const id = 'cl_' + i;
+      const isChecked = selected.size ? selected.has(t) : true; // když nic uložené → zaškrtnout vše
+      const row = document.createElement('div');
+      row.className = 'flex';
+      row.innerHTML =
+        `<label class="flex" style="gap:8px">
+           <input type="checkbox" id="${id}" ${isChecked ? 'checked' : ''}>
+           <span>${t}</span>
+         </label>`;
+      wrap.appendChild(row);
+    });
+  }
+
+  function fillInputsFromData(){
+    const d = safeLoadContractData() || {};
+    CONTRACT_INPUT_IDS.forEach(id => {
+      const el = document.getElementById(id);
+      if (el && d[id] != null) el.value = d[id];
+    });
+  }
+
+  function collectContractForm(){
+    const obj = {};
+    CONTRACT_INPUT_IDS.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) obj[id] = el.value;
+    });
+    obj.clauses = Array.from(
+      document.querySelectorAll('#clauses input[type=checkbox]:checked')
+    ).map(ch => ch.nextElementSibling.textContent);
+    return obj;
+  }
+
+  function autosave(){
+    safeSaveContractData(collectContractForm());
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    renderClauses();
+    fillInputsFromData();
+
+    const checkAll = document.getElementById('check_all');
+    if (checkAll) {
+      checkAll.addEventListener('change', e => {
+        const v = e.target.checked;
+        document.querySelectorAll('#clauses input[type=checkbox]').forEach(ch => ch.checked = v);
+        autosave();
+      });
+    }
+
+    document.querySelectorAll('input,select,textarea').forEach(el => {
+      el.addEventListener('input', autosave);
+      el.addEventListener('change', autosave);
+    });
+
+    const btn = document.getElementById('showFinal');
+    if (btn) btn.addEventListener('click', () => {
+      autosave();
+      window.location.href = 'vytvorenakarta.html';
+    });
+  });
+</script>

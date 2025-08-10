@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nová nabídka – Altiven 2.0</title><link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0b5fff">
+
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0b5fff">
+</head>
+<body>
+  <header class="main-header app-only">
+    <div class="logo"><span class="logo-sm">📝</span><h1>Nová nabídka</h1></div>
+    <nav class="top-actions">
+      <a class="btn ghost" href="index.html">← Zpět</a>
+      <button class="btn" onclick="location.href='vytvoritsmlouvu.html'">Pokračovat na smlouvu →</button>
+    </nav>
+  </header>
+
+  <main class="container">
+    <section class="card export-scope" id="offerScope">
+      <h2>Nabídka pro zákazníka</h2>
+      <div class="form-row">
+        <div>
+          <label>Odběratel / zákazník</label>
+          <input class="input" id="o_jmeno" placeholder="Jméno / Firma">
+        </div>
+        <div>
+          <label>E‑mail</label>
+          <input class="input" id="o_email" placeholder="email@domena.cz">
+        </div>
+      </div>
+      <div class="form-row mt12">
+        <div>
+          <label>Projekt / Popis</label>
+          <input class="input" id="popis" placeholder="Rekonstrukce koupelny…">
+        </div>
+        <div>
+          <label>Platnost nabídky do</label>
+          <input class="input" id="platnost" type="date">
+        </div>
+      </div>
+
+      <h3 class="mt16">Položky</h3>
+      <table class="table" id="tbl">
+        <thead>
+          <tr><th>Název</th><th>Jedn.</th><th>Cena bez DPH</th><th>Množství</th><th>Mezisoučet</th><th class="app-only">Akce</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+
+      <div class="flex mt12">
+        <button class="btn app-only" id="add">+ Položka</button>
+        <div class="right small">DPH:
+          <input class="input app-only" id="vat" type="number" min="0" max="30" step="1" style="width:80px" value="21">
+        </div>
+      </div>
+
+      <div class="flex mt16">
+        <div><strong>Mezisoučet:</strong> <span id="sub">0 Kč</span></div>
+        <div class="right"><strong>DPH:</strong> <span id="vatTxt">21 %</span></div>
+        <div class="right"><strong>Celkem s DPH:</strong> <span id="tot">0 Kč</span></div>
+      </div>
+    </section>
+
+    <div class="flex app-only mt16">
+      <button class="btn" data-export-pdf>Stáhnout PDF</button>
+      <button class="btn ghost" data-export-print>Vytisknout</button>
+      <button class="btn ghost" data-export-email>Odeslat e‑mailem</button>
+    </div>
+  </main>
+
+  <footer class="app-footer app-only"><p>© 2025 Altiven</p></footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js" defer></script><!-- Firebase SDK (compat) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="js/script.js"></script><script src="js/firebase.js"></script><!-- Firebase SDK (compat) – POŘADÍ DŮLEŽITÉ -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+<!-- Moje sync vrstva (js/firebase.js) -->
+<script src="js/firebase.js"></script>
+<script>
+  // ⬇️ Sem vlož svůj config z Firebase konzole (ten, co právě vidíš na obrazovce)
+  FirebaseSync.init({
+    apiKey: "TVŮJ_API_KEY",
+    authDomain: "TVŮJ-PROJEKT.firebaseapp.com",
+    projectId: "TVŮJ-PROJEKT",
+    storageBucket: "TVŮJ-PROJEKT.appspot.com",
+    messagingSenderId: "XXXXXXXX",
+    appId: "1:XXXXXXXX:web:YYYYYYYY"
+  });
+</script>
+
+<!-- Registrace service workeru (PWA / offline) -->
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./service-worker.js').catch(console.error);
+    });
+  }
+</script>
+
+<script>
+  // 1) Vlož své hodnoty (nebo zatím dummy) – viz firebase.js
+  FirebaseSync.init({
+    apiKey:     "TVŮJ_API_KEY",
+    authDomain: "TVŮJ-PROJEKT.firebaseapp.com",
+    projectId:  "TVŮJ-PROJEKT",
+    storageBucket: "TVŮJ-PROJEKT.appspot.com",
+    messagingSenderId: "XXXXXX",
+    appId:      "1:XXXXXX:web:YYYYYY"
+  });
+</script>
+
+  <script>
+    let items = [];
+    function recalc(){
+      let subtotal = 0;
+      items.forEach(it => subtotal += App.Currency.num(it.qty)*App.Currency.num(it.price));
+      const vat = App.Currency.num(document.getElementById('vat').value || 21);
+      const total = subtotal*(1+vat/100);
+      document.getElementById('sub').textContent = App.Currency.czk(subtotal);
+      document.getElementById('vatTxt').textContent = vat.toFixed(0)+' %';
+      document.getElementById('tot').textContent = App.Currency.czk(total);
+    }
+    function draw(){
+      const tb = document.querySelector('#tbl tbody'); tb.innerHTML='';
+      items.forEach((it, idx)=>{
+        const tr=document.createElement('tr');
+        tr.innerHTML = `
+          <td><input class="input" value="${it.name}"></td>
+          <td style="width:90px"><input class="input" value="${it.unit}"></td>
+          <td style="width:150px"><input class="input" type="number" step="0.01" value="${it.price}"></td>
+          <td style="width:140px"><input class="input" type="number" step="0.01" value="${it.qty||0}"></td>
+          <td data-row>${App.Currency.czk(App.Currency.num(it.qty)*App.Currency.num(it.price))}</td>
+          <td class="app-only"><button class="btn danger" data-del>✕</button></td>`;
+        const [n,u,p,q]=tr.querySelectorAll('input');
+        const row=tr.querySelector('[data-row]');
+        n.addEventListener('input',e=>{it.name=e.target.value; save();});
+        u.addEventListener('input',e=>{it.unit=e.target.value; save();});
+        p.addEventListener('input',e=>{it.price=e.target.value; row.textContent=App.Currency.czk(App.Currency.num(it.qty)*App.Currency.num(it.price)); recalc(); save();});
+        q.addEventListener('input',e=>{it.qty=e.target.value; row.textContent=App.Currency.czk(App.Currency.num(it.qty)*App.Currency.num(it.price)); recalc(); save();});
+        tr.querySelector('[data-del]')?.addEventListener('click', ()=>{ items.splice(idx,1); draw(); recalc(); save(); });
+        tb.appendChild(tr);
+      });
+      recalc();
+    }
+    function save(){
+      App.saveBlock('offer','current',{ 
+        customer: document.getElementById('o_jmeno').value,
+        email: document.getElementById('o_email').value,
+        desc: document.getElementById('popis').value,
+        valid: document.getElementById('platnost').value,
+        vat: App.Currency.num(document.getElementById('vat').value||21),
+        items
+      });
+    }
+    function load(){
+      const saved = App.loadBlock('offer','current',{items:[],vat:21});
+      items = saved.items || [];
+      document.getElementById('o_jmeno').value = saved.customer||'';
+      document.getElementById('o_email').value = saved.email||'';
+      document.getElementById('popis').value = saved.desc||'';
+      document.getElementById('platnost').value = saved.valid||'';
+      document.getElementById('vat').value = saved.vat||21;
+    }
+    // Naplnění z ceníku – vezmeme posledně otevřenou profesi z URL, nebo z ceníku obkladač
+    function importFromPricebook(){
+      const prof = getParam('prof') || 'obkladac';
+      const data = App.loadBlock('cenik', prof, {items:[]});
+      // importuj jen položky s qty > 0
+      const imported = (data.items||[]).filter(it => App.Currency.num(it.qty)>0)
+        .map(it=> ({name:it.name, unit:it.unit, price:it.price, qty:it.qty}));
+      if(imported.length){ items = imported; draw(); recalc(); save(); App.toast('Načteno z ceníku: '+prof); }
+    }
+
+    document.addEventListener('DOMContentLoaded', ()=>{
+      load(); draw(); recalc();
+      document.getElementById('add').addEventListener('click', ()=>{ items.push({name:'Položka',unit:'ks',price:0,qty:0}); draw(); save(); });
+      document.getElementById('vat').addEventListener('input', ()=>{ recalc(); save(); });
+      bindExportButtons('#offerScope');
+      if(items.length===0) importFromPricebook();
+    });
+  </script><script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./service-worker.js').catch(console.error);
+    });
+  }
+</script>
+
+</body>
+</html>

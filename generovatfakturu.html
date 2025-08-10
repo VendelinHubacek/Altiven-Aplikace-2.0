@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Faktura – Altiven 2.0</title><link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0b5fff">
+
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="main-header app-only">
+    <div class="logo"><span class="logo-sm">💰</span><h1>Generovat fakturu</h1></div>
+    <nav class="top-actions">
+      <a class="btn ghost" href="index.html">← Zpět</a>
+    </nav>
+  </header>
+
+  <main class="container">
+    <section class="card export-scope" id="invScope">
+      <div class="form-row">
+        <div>
+          <h2>Dodavatel</h2>
+          <input class="input mt8" id="s_nazev" placeholder="Altiven, s.r.o.">
+          <input class="input mt8" id="s_ico" placeholder="IČO">
+          <input class="input mt8" id="s_dic" placeholder="DIČ">
+          <input class="input mt8" id="s_sidlo" placeholder="Sídlo">
+          <input class="input mt8" id="s_kontakt" placeholder="Kontakt">
+          <input class="input mt8" id="s_ucet" placeholder="Bankovní účet">
+        </div>
+        <div>
+          <h2>Odběratel</h2>
+          <input class="input mt8" id="b_nazev" placeholder="Jméno / Firma">
+          <input class="input mt8" id="b_ico" placeholder="IČO">
+          <input class="input mt8" id="b_dic" placeholder="DIČ">
+          <input class="input mt8" id="b_sidlo" placeholder="Sídlo">
+          <input class="input mt8" id="b_kontakt" placeholder="Kontakt">
+        </div>
+      </div>
+
+      <div class="form-row mt16">
+        <div>
+          <label>Číslo faktury</label>
+          <input class="input" id="inv_no" placeholder="2025-0001">
+        </div>
+        <div>
+          <label>Variabilní symbol</label>
+          <input class="input" id="inv_vs" placeholder="20250001">
+        </div>
+      </div>
+      <div class="form-row mt12">
+        <div>
+          <label>Datum vystavení</label>
+          <input class="input" type="date" id="inv_issue">
+        </div>
+        <div>
+          <label>Datum splatnosti</label>
+          <input class="input" type="date" id="inv_due">
+        </div>
+      </div>
+
+      <h3 class="mt16">Položky</h3>
+      <table class="table" id="invTbl">
+        <thead>
+          <tr><th>Název</th><th>Jedn.</th><th>Cena bez DPH</th><th>Množství</th><th>Mezisoučet</th><th class="app-only">Akce</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      <div class="mt8 app-only">
+        <button class="btn" id="addInvItem">+ Položka</button>
+        <span class="right small">DPH: <input class="input" id="inv_vat" type="number" min="0" max="30" step="1" style="width:80px" value="21"></span>
+      </div>
+
+      <div class="form-row mt12">
+        <div>
+          <div class="qr-box">QR kód (volitelné)</div>
+          <div class="small mt8">Pozn.: Pro skutečný QR (QR platba) můžeš později doplnit generátor.</div>
+        </div>
+        <div>
+          <div><strong>Mezisoučet:</strong> <span id="inv_sub">0 Kč</span></div>
+          <div class="mt8"><strong>DPH:</strong> <span id="inv_vatTxt">21 %</span></div>
+          <div class="mt8"><strong>Celkem s DPH:</strong> <span id="inv_tot">0 Kč</span></div>
+        </div>
+      </div>
+
+      <div class="mt16">
+        <label>Poznámka na faktuře</label>
+        <textarea class="input" id="inv_note" rows="3" placeholder="Děkujeme za spolupráci."></textarea>
+      </div>
+    </section>
+
+    <div class="flex app-only mt16">
+      <button class="btn" data-export-pdf>Stáhnout PDF</button>
+      <button class="btn ghost" data-export-print>Vytisknout</button>
+      <button class="btn ghost" data-export-email>Odeslat e‑mailem</button>
+      <div class="right small">Tlačítka se v exportech neukážou.</div>
+    </div>
+  </main>
+
+  <footer class="app-footer app-only"><p>© 2025 Altiven</p></footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js" defer></script><!-- Firebase SDK (compat) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="js/script.js"></script><script src="js/firebase.js"></script>
+  <!-- Firebase SDK (compat) – POŘADÍ DŮLEŽITÉ -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+<!-- Moje sync vrstva (js/firebase.js) -->
+<script src="js/firebase.js"></script>
+<script>
+  // ⬇️ Sem vlož svůj config z Firebase konzole (ten, co právě vidíš na obrazovce)
+  FirebaseSync.init({
+    apiKey: "TVŮJ_API_KEY",
+    authDomain: "TVŮJ-PROJEKT.firebaseapp.com",
+    projectId: "TVŮJ-PROJEKT",
+    storageBucket: "TVŮJ-PROJEKT.appspot.com",
+    messagingSenderId: "XXXXXXXX",
+    appId: "1:XXXXXXXX:web:YYYYYYYY"
+  });
+</script>
+
+<!-- Registrace service workeru (PWA / offline) -->
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./service-worker.js').catch(console.error);
+    });
+  }
+</script>
+
+<script>
+  // 1) Vlož své hodnoty (nebo zatím dummy) – viz firebase.js
+  FirebaseSync.init({
+    apiKey:     "TVŮJ_API_KEY",
+    authDomain: "TVŮJ-PROJEKT.firebaseapp.com",
+    projectId:  "TVŮJ-PROJEKT",
+    storageBucket: "TVŮJ-PROJEKT.appspot.com",
+    messagingSenderId: "XXXXXX",
+    appId:      "1:XXXXXX:web:YYYYYY"
+  });
+</script>
+
+  <script>
+    let invItems = [];
+
+    function invRecalc(){
+      let sub = 0;
+      invItems.forEach(it => sub += App.Currency.num(it.qty)*App.Currency.num(it.price));
+      const vat = App.Currency.num(document.getElementById('inv_vat').value||21);
+      const tot = sub*(1+vat/100);
+      document.getElementById('inv_sub').textContent = App.Currency.czk(sub);
+      document.getElementById('inv_vatTxt').textContent = vat.toFixed(0)+' %';
+      document.getElementById('inv_tot').textContent = App.Currency.czk(tot);
+    }
+    function invDraw(){
+      const tb = document.querySelector('#invTbl tbody'); tb.innerHTML='';
+      invItems.forEach((it, idx)=>{
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><input class="input" value="${it.name}"></td>
+          <td style="width:90px"><input class="input" value="${it.unit}"></td>
+          <td style="width:150px"><input class="input" type="number" step="0.01" value="${it.price}"></td>
+          <td style="width:140px"><input class="input" type="number" step="0.01" value="${it.qty||0}"></td>
+          <td data-row>${App.Currency.czk(App.Currency.num(it.qty)*App.Currency.num(it.price))}</td>
+          <td class="app-only"><button class="btn danger" data-del>✕</button></td>`;
+        const [n,u,p,q]=tr.querySelectorAll('input');
+        const row = tr.querySelector('[data-row]');
+        n.addEventListener('input', e=>{ it.name=e.target.value; invSave(); });
+        u.addEventListener('input', e=>{ it.unit=e.target.value; invSave(); });
+        p.addEventListener('input', e=>{ it.price=e.target.value; row.textContent=App.Currency.czk(App.Currency.num(it.qty)*App.Currency.num(it.price)); invRecalc(); invSave(); });
+        q.addEventListener('input', e=>{ it.qty=e.target.value; row.textContent=App.Currency.czk(App.Currency.num(it.qty)*App.Currency.num(it.price)); invRecalc(); invSave(); });
+        tr.querySelector('[data-del]')?.addEventListener('click', ()=>{ invItems.splice(idx,1); invDraw(); invRecalc(); invSave(); });
+        tb.appendChild(tr);
+      });
+      invRecalc();
+    }
+    function invSave(){
+      const obj = {
+        seller: { name: s_nazev.value, ico:s_ico.value, dic:s_dic.value, addr:s_sidlo.value, contact:s_kontakt.value, account:s_ucet.value },
+        buyer: { name: b_nazev.value, ico:b_ico.value, dic:b_dic.value, addr:b_sidlo.value, contact:b_kontakt.value },
+        no: inv_no.value, vs: inv_vs.value, issue: inv_issue.value, due: inv_due.value,
+        vat: App.Currency.num(inv_vat.value||21),
+        items: invItems, note: inv_note.value
+      };
+      App.saveBlock('invoice','current', obj);
+    }
+    function invLoad(){
+      const obj = App.loadBlock('invoice','current', {items:[], vat:21});
+      s_nazev.value = obj?.seller?.name || '';
+      s_ico.value   = obj?.seller?.ico || '';
+      s_dic.value   = obj?.seller?.dic || '';
+      s_sidlo.value = obj?.seller?.addr || '';
+      s_kontakt.value = obj?.seller?.contact || '';
+      s_ucet.value  = obj?.seller?.account || '';
+      b_nazev.value = obj?.buyer?.name || '';
+      b_ico.value   = obj?.buyer?.ico || '';
+      b_dic.value   = obj?.buyer?.dic || '';
+      b_sidlo.value = obj?.buyer?.addr || '';
+      b_kontakt.value = obj?.buyer?.contact || '';
+      inv_no.value  = obj.no || '';
+      inv_vs.value  = obj.vs || '';
+      inv_issue.value = obj.issue || '';
+      inv_due.value = obj.due || '';
+      inv_vat.value = obj.vat ?? 21;
+      inv_note.value = obj.note || '';
+      invItems = obj.items || [];
+      invDraw(); invRecalc();
+    }
+
+    // Import z nabídky, když nejsou položky
+    function importFromOffer(){
+      const off = App.loadBlock('offer','current',{items:[],vat:21});
+      if(invItems.length===0 && (off.items||[]).length){
+        invItems = off.items.map(it=>({name:it.name, unit:it.unit, price:it.price, qty:it.qty}));
+        inv_vat.value = off.vat || 21;
+        invDraw(); invRecalc(); invSave();
+        App.toast('Načteno z poslední nabídky');
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', ()=>{
+      invLoad();
+      document.getElementById('addInvItem').addEventListener('click', ()=>{ invItems.push({name:'Položka',unit:'ks',price:0,qty:0}); invDraw(); invSave(); });
+      document.querySelectorAll('input,textarea').forEach(el=>{
+        el.addEventListener('input', invSave); el.addEventListener('change', invSave);
+      });
+      document.getElementById('inv_vat').addEventListener('input', ()=>{ invRecalc(); invSave(); });
+      bindExportButtons('#invScope');
+      importFromOffer();
+    });
+  </script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./service-worker.js').catch(console.error);
+    });
+  }
+</script>
+
+</body>
+</html>

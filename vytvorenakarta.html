@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Finální smlouva – Altiven 2.0</title><link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0b5fff">
+
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0b5fff">
+</head>
+<body>
+  <header class="main-header app-only">
+    <div class="logo"><span class="logo-sm">📄</span><h1>Finální smlouva</h1></div>
+    <nav class="top-actions">
+      <a class="btn ghost" href="vytvoritsmlouvu.html">← Zpět (upravit)</a>
+      <button class="btn" onclick="location.href='predavaciprotokol.html'">Pokračovat na předávací protokol →</button>
+    </nav>
+  </header>
+
+  <main class="container">
+    <!-- Tohle je jediný exportní scope – jen obsah smlouvy, bez ovládání -->
+    <section id="contractOut" class="export-scope"></section>
+
+    <div class="flex app-only mt16">
+      <button class="btn" data-export-pdf>Stáhnout PDF</button>
+      <button class="btn ghost" data-export-print>Vytisknout</button>
+      <button class="btn ghost" data-export-email>Odeslat e‑mailem</button>
+      <div class="right small">Tlačítka se nezobrazí v exportech.</div>
+    </div>
+  </main>
+
+  <footer class="app-footer app-only"><p>© 2025 Altiven</p></footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js" defer></script><!-- Firebase SDK (compat) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+  <script src="js/script.js"></script><script src="js/firebase.js"></script>
+  <!-- Firebase SDK (compat) – POŘADÍ DŮLEŽITÉ -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+<!-- Moje sync vrstva (js/firebase.js) -->
+<script src="js/firebase.js"></script>
+<script>
+  // ⬇️ Sem vlož svůj config z Firebase konzole (ten, co právě vidíš na obrazovce)
+  FirebaseSync.init({
+    apiKey: "TVŮJ_API_KEY",
+    authDomain: "TVŮJ-PROJEKT.firebaseapp.com",
+    projectId: "TVŮJ-PROJEKT",
+    storageBucket: "TVŮJ-PROJEKT.appspot.com",
+    messagingSenderId: "XXXXXXXX",
+    appId: "1:XXXXXXXX:web:YYYYYYYY"
+  });
+</script>
+
+<!-- Registrace service workeru (PWA / offline) -->
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./service-worker.js').catch(console.error);
+    });
+  }
+</script>
+
+<script>
+  // 1) Vlož své hodnoty (nebo zatím dummy) – viz firebase.js
+  FirebaseSync.init({
+    apiKey:     "TVŮJ_API_KEY",
+    authDomain: "TVŮJ-PROJEKT.firebaseapp.com",
+    projectId:  "TVŮJ-PROJEKT",
+    storageBucket: "TVŮJ-PROJEKT.appspot.com",
+    messagingSenderId: "XXXXXX",
+    appId:      "1:XXXXXX:web:YYYYYY"
+  });
+</script>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', ()=>{
+      const data = loadContractData();
+      const html = buildContractHTML(data);
+      document.getElementById('contractOut').innerHTML = html;
+      bindExportButtons('#contractOut');
+    });
+  </script><script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./service-worker.js').catch(console.error);
+    });
+  }
+</script>
+
+</body>
+</html>

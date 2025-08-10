@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Předávací protokol – Altiven 2.0</title><link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0b5fff">
+
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0b5fff">
+</head>
+<body>
+  <header class="main-header app-only">
+    <div class="logo"><span class="logo-sm">✅</span><h1>Předávací protokol</h1></div>
+    <nav class="top-actions">
+      <a class="btn ghost" href="index.html">← Zpět</a>
+      <button class="btn" onclick="location.href='generovatfakturu.html'">Pokračovat na fakturu →</button>
+    </nav>
+  </header>
+
+  <main class="container">
+    <section class="card export-scope" id="protScope">
+      <h2>Předávací protokol</h2>
+      <div class="form-row">
+        <div>
+          <label>Projekt</label>
+          <input class="input" id="p_projekt" placeholder="Název / Popis">
+        </div>
+        <div>
+          <label>Místo</label>
+          <input class="input" id="p_misto" placeholder="Adresa místa předání">
+        </div>
+      </div>
+      <div class="form-row mt12">
+        <div>
+          <label>Datum předání</label>
+          <input class="input" id="p_datum" type="date">
+        </div>
+        <div>
+          <label>Kontakt na objednatele</label>
+          <input class="input" id="p_obj_kontakt" placeholder="Jméno, telefon, e‑mail">
+        </div>
+      </div>
+
+      <h3 class="mt16">Předané části / položky</h3>
+      <table class="table" id="polozkyTbl">
+        <thead><tr><th>Položka</th><th>Popis</th><th>Stav</th><th class="app-only">Akce</th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <div class="mt8 app-only">
+        <button class="btn" id="addItem">+ Položka</button>
+      </div>
+
+      <h3 class="mt16">Nedodělky / závady</h3>
+      <table class="table" id="zavadyTbl">
+        <thead><tr><th>Popis závady</th><th>Termín odstranění</th><th class="app-only">Akce</th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <div class="mt8 app-only">
+        <button class="btn" id="addDefect">+ Nedodělek</button>
+      </div>
+
+      <h3 class="mt16">Podpisy</h3>
+      <div class="form-row">
+        <div>
+          <label>Podpis zhotovitele</label>
+          <canvas id="sigZ" width="450" height="140" style="border:1px solid rgba(0,0,0,.15); border-radius:8px; background:#fff"></canvas>
+          <div class="mt8 app-only">
+            <button class="btn ghost" onclick="clearCanvas('sigZ')">Smazat</button>
+          </div>
+        </div>
+        <div>
+          <label>Podpis objednatele</label>
+          <canvas id="sigO" width="450" height="140" style="border:1px solid rgba(0,0,0,.15); border-radius:8px; background:#fff"></canvas>
+          <div class="mt8 app-only">
+            <button class="btn ghost" onclick="clearCanvas('sigO')">Smazat</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-row mt12">
+        <div>
+          <label>Za zhotovitele</label>
+          <input class="input" id="p_zhotovitel" placeholder="Jméno / Firma">
+        </div>
+        <div>
+          <label>Za objednatele</label>
+          <input class="input" id="p_objednatel" placeholder="Jméno / Firma">
+        </div>
+      </div>
+    </section>
+
+    <div class="flex app-only mt16">
+      <button class="btn" data-export-pdf>Stáhnout PDF</button>
+      <button class="btn ghost" data-export-print>Vytisknout</button>
+      <button class="btn ghost" data-export-email>Odeslat e‑mailem</button>
+      <div class="right small">Tlačítka se v exportech neukážou.</div>
+    </div>
+  </main>
+
+  <footer class="app-footer app-only"><p>© 2025 Altiven</p></footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js" defer></script><!-- Firebase SDK (compat) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="js/script.js"></script><script src="js/firebase.js"></script>
+  <!-- Firebase SDK (compat) – POŘADÍ DŮLEŽITÉ -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+<!-- Moje sync vrstva (js/firebase.js) -->
+<script src="js/firebase.js"></script>
+<script>
+  // ⬇️ Sem vlož svůj config z Firebase konzole (ten, co právě vidíš na obrazovce)
+  FirebaseSync.init({
+    apiKey: "TVŮJ_API_KEY",
+    authDomain: "TVŮJ-PROJEKT.firebaseapp.com",
+    projectId: "TVŮJ-PROJEKT",
+    storageBucket: "TVŮJ-PROJEKT.appspot.com",
+    messagingSenderId: "XXXXXXXX",
+    appId: "1:XXXXXXXX:web:YYYYYYYY"
+  });
+</script>
+
+<!-- Registrace service workeru (PWA / offline) -->
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./service-worker.js').catch(console.error);
+    });
+  }
+</script>
+
+<script>
+  // 1) Vlož své hodnoty (nebo zatím dummy) – viz firebase.js
+  FirebaseSync.init({
+    apiKey:     "TVŮJ_API_KEY",
+    authDomain: "TVŮJ-PROJEKT.firebaseapp.com",
+    projectId:  "TVŮJ-PROJEKT",
+    storageBucket: "TVŮJ-PROJEKT.appspot.com",
+    messagingSenderId: "XXXXXX",
+    appId:      "1:XXXXXX:web:YYYYYY"
+  });
+</script>
+
+  <script>
+    // ===== Data =====
+    let polozky = [];
+    let zavady = [];
+
+    function recalc(){ /* není potřeba – protokol je textový */ }
+
+    function drawTable(tblId, rows, schema){
+      const tb = document.querySelector(tblId + ' tbody'); tb.innerHTML='';
+      rows.forEach((row, idx)=>{
+        const tr = document.createElement('tr');
+        tr.innerHTML = schema(row);
+        // navázat vstupy
+        [...tr.querySelectorAll('input')].forEach(inp=>{
+          inp.addEventListener('input', ()=> save());
+        });
+        tr.querySelector('[data-del]')?.addEventListener('click', ()=>{
+          rows.splice(idx,1); drawAll(); save();
+        });
+        tb.appendChild(tr);
+      });
+    }
+    function drawAll(){
+      drawTable('#polozkyTbl', polozky, (r)=>`
+        <td><input class="input" value="${r.nazev||''}"></td>
+        <td><input class="input" value="${r.popis||''}"></td>
+        <td><input class="input" value="${r.stav||'Předáno'}"></td>
+        <td class="app-only"><button class="btn danger" data-del>✕</button></td>
+      `);
+      drawTable('#zavadyTbl', zavady, (r)=>`
+        <td><input class="input" value="${r.popis||''}"></td>
+        <td><input class="input" type="date" value="${r.termin||''}"></td>
+        <td class="app-only"><button class="btn danger" data-del>✕</button></td>
+      `);
+    }
+
+    function save(){
+      // načti hlavičku
+      const obj = {
+        projekt: document.getElementById('p_projekt').value,
+        misto: document.getElementById('p_misto').value,
+        datum: document.getElementById('p_datum').value,
+        obj_kontakt: document.getElementById('p_obj_kontakt').value,
+        zhotovitel: document.getElementById('p_zhotovitel').value,
+        objednatel: document.getElementById('p_objednatel').value,
+        polozky, zavady,
+        sigZ: document.getElementById('sigZ').toDataURL('image/png'),
+        sigO: document.getElementById('sigO').toDataURL('image/png')
+      };
+      App.saveBlock('protocol','current', obj);
+    }
+    function load(){
+      const obj = App.loadBlock('protocol','current', {polozky:[],zavady:[]});
+      document.getElementById('p_projekt').value = obj.projekt||'';
+      document.getElementById('p_misto').value = obj.misto||'';
+      document.getElementById('p_datum').value = obj.datum||'';
+      document.getElementById('p_obj_kontakt').value = obj.obj_kontakt||'';
+      document.getElementById('p_zhotovitel').value = obj.zhotovitel||'';
+      document.getElementById('p_objednatel').value = obj.objednatel||'';
+      polozky = obj.polozky||[];
+      zavady = obj.zavady||[];
+      drawAll();
+      // obnov podpisy
+      if(obj.sigZ) loadCanvas('sigZ', obj.sigZ);
+      if(obj.sigO) loadCanvas('sigO', obj.sigO);
+    }
+
+    // ===== Podpisy – jednoduché kreslení po canvasu =====
+    function bindSignature(canvasId){
+      const c = document.getElementById(canvasId);
+      const ctx = c.getContext('2d');
+      let drawing=false, prev=null;
+      function pos(e){
+        const r=c.getBoundingClientRect();
+        const x = (e.touches? e.touches[0].clientX : e.clientX) - r.left;
+        const y = (e.touches? e.touches[0].clientY : e.clientY) - r.top;
+        return {x,y};
+      }
+      function start(e){ drawing=true; prev=pos(e); e.preventDefault(); }
+      function move(e){
+        if(!drawing) return;
+        const p = pos(e);
+        ctx.beginPath();
+        ctx.moveTo(prev.x, prev.y);
+        ctx.lineTo(p.x, p.y);
+        ctx.lineWidth = 2; ctx.lineCap='round';
+        ctx.stroke();
+        prev=p;
+        e.preventDefault();
+        save();
+      }
+      function end(){ drawing=false; prev=null; save(); }
+      c.addEventListener('mousedown', start);
+      c.addEventListener('mousemove', move);
+      c.addEventListener('mouseup', end);
+      c.addEventListener('mouseleave', end);
+      c.addEventListener('touchstart', start, {passive:false});
+      c.addEventListener('touchmove', move, {passive:false});
+      c.addEventListener('touchend', end);
+    }
+    function clearCanvas(id){
+      const c=document.getElementById(id), ctx=c.getContext('2d');
+      ctx.clearRect(0,0,c.width,c.height);
+      save();
+    }
+    function loadCanvas(id, dataUrl){
+      const c=document.getElementById(id), ctx=c.getContext('2d');
+      const img=new Image();
+      img.onload=()=>{ ctx.clearRect(0,0,c.width,c.height); ctx.drawImage(img,0,0,c.width,c.height); };
+      img.src = dataUrl;
+    }
+
+    document.addEventListener('DOMContentLoaded', ()=>{
+      bindSignature('sigZ');
+      bindSignature('sigO');
+      document.getElementById('addItem').addEventListener('click', ()=>{ polozky.push({nazev:'Položka', popis:'', stav:'Předáno'}); drawAll(); save(); });
+      document.getElementById('addDefect').addEventListener('click', ()=>{ zavady.push({popis:'', termin:''}); drawAll(); save(); });
+
+      document.querySelectorAll('input').forEach(el=>{
+        el.addEventListener('input', save);
+        el.addEventListener('change', save);
+      });
+
+      load();
+      bindExportButtons('#protScope');
+    });
+  </script><script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./service-worker.js').catch(console.error);
+    });
+  }
+</script>
+
+</body>
+</html>
