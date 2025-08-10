@@ -123,3 +123,6 @@ label{font-weight:600; font-size:.95rem}
 
 /* Širší obsah u smlouvy 2.0 */
 .contract-wide{max-width:980px; margin:0 auto}
+.features-list { display:flex; gap:12px; flex-wrap:wrap; margin-top:10px; padding:0; list-style:none; }
+.features-list li { background:#f4f6ff; border:1px solid #e5e9ff; border-radius:999px; padding:6px 10px; font-weight:600; font-size:14px; }
+
